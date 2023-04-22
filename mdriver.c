@@ -1132,7 +1132,7 @@ static double eval_mm_util(trace_t *trace, int tracenum)
 				app_error("trace %d: Nonexistent request type in eval_mm_util",
 						tracenum);
 		}
-
+		//printf("%d ",mem_heap_hi() + 1);
 		/* update the high-water mark */
 		max_total_size = (total_size > max_total_size) ?
 			total_size : max_total_size;

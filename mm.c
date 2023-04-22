@@ -60,7 +60,7 @@
 #define PREVBLOCK(addr) (addr - GETSIZE(HEADER(addr) - WSIZE))
 #define NEXTBLOCK(addr) (addr + GETSIZE(HEADER(addr)))
 
-#define EXTENDSIZE (1<<12) /* bytes */
+#define EXTENDSIZE (1<<4) /* bytes */
 #define MINBLOCKSIZE 16
 
 
@@ -73,28 +73,6 @@ static char* prev_listp; //use for denote the prev find block for next fit
 static char* coalesce(char *bp){
     int prev_alloc = GETALLOC(HEADER(PREVBLOCK(bp)));
     int next_alloc = GETALLOC(HEADER(NEXTBLOCK(bp)));
-    /* if (((int) HEADER(PREVBLOCK(bp))) == 687604 || ((int) HEADER(bp)) == 687604 || ((int) HEADER(NEXTBLOCK(bp))) == 687604){
-        printf("Coalesce!\n");
-        printf("header at %d with size %d and alloc %d\n", (int) HEADER(bp),GETSIZE(HEADER(bp)),GETALLOC(HEADER(bp)));
-        printf("footer at %d with size %d and alloc %d\n", (int) FOOTER(bp),GETSIZE(FOOTER(bp)),GETALLOC(FOOTER(bp)));
-        printf("prev header at %d with size %d and alloc %d\n", (int) HEADER(PREVBLOCK(bp)),GETSIZE(HEADER(PREVBLOCK(bp))),GETALLOC(HEADER(PREVBLOCK(bp))));
-        printf("next header at %d with size %d and alloc %d\n", (int) HEADER(NEXTBLOCK(bp)),GETSIZE(HEADER(NEXTBLOCK(bp))),GETALLOC(HEADER(NEXTBLOCK(bp))));
-        printf("next footer at %d with size %d and alloc %d\n", (int) FOOTER(NEXTBLOCK(bp)),GETSIZE(FOOTER(NEXTBLOCK(bp))),GETALLOC(FOOTER(NEXTBLOCK(bp))));
-        printf("%d %d\n",prev_alloc,next_alloc);
-        printf("%d\n", (int) prev_listp);
-        printf("%d\n\n",mem_heap_hi());
-    } 
-    if (((int) HEADER(PREVBLOCK(bp))) == 842948 || ((int) HEADER(bp)) == 842948 || ((int) HEADER(NEXTBLOCK(bp))) == 842948){
-        printf("Coalesce!\n");
-        printf("header at %d with size %d and alloc %d\n", (int) HEADER(bp),GETSIZE(HEADER(bp)),GETALLOC(HEADER(bp)));
-        printf("footer at %d with size %d and alloc %d\n", (int) FOOTER(bp),GETSIZE(FOOTER(bp)),GETALLOC(FOOTER(bp)));
-        printf("prev header at %d with size %d and alloc %d\n", (int) HEADER(PREVBLOCK(bp)),GETSIZE(HEADER(PREVBLOCK(bp))),GETALLOC(HEADER(PREVBLOCK(bp))));
-        printf("next header at %d with size %d and alloc %d\n", (int) HEADER(NEXTBLOCK(bp)),GETSIZE(HEADER(NEXTBLOCK(bp))),GETALLOC(HEADER(NEXTBLOCK(bp))));
-        printf("next footer at %d with size %d and alloc %d\n", (int) FOOTER(NEXTBLOCK(bp)),GETSIZE(FOOTER(NEXTBLOCK(bp))),GETALLOC(FOOTER(NEXTBLOCK(bp))));
-        printf("%d %d\n",prev_alloc,next_alloc);
-        printf("%d\n", (int) prev_listp);
-        printf("%d\n\n",mem_heap_hi());
-    }  */
     if (prev_alloc && !next_alloc){ //I write wrong condition first
         if (prev_listp == NEXTBLOCK(bp)) // We need to move this to the block and before we coalesce
             prev_listp = bp;
@@ -157,7 +135,7 @@ int mm_init(void){
  * Use Next fit
  */
 static char* find_fit(size_t size){
-    for (char *bp = prev_listp;GETSIZE(HEADER(bp)) != 0;bp += GETSIZE(HEADER(bp))){
+    for (char *bp = heap_listp;GETSIZE(HEADER(bp)) != 0;bp += GETSIZE(HEADER(bp))){
         if (GETSIZE(HEADER(bp)) >= size && !GETALLOC(HEADER(bp))){
             prev_listp = bp;
             return bp;
@@ -282,6 +260,7 @@ void *calloc (size_t nmemb, size_t size){
  *      so nah!
  */
 void mm_checkheap(int verbose){
+    //printf("%d ",mem_heap_hi() + 1);
     if (GETSIZE(HEADER(mem_heap_hi() + 1))){
         printf("checkheap error with epilogue not with size 0\n");
     }
