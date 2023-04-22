@@ -60,7 +60,7 @@
 #define PREVBLOCK(addr) (addr - GETSIZE(HEADER(addr) - WSIZE))
 #define NEXTBLOCK(addr) (addr + GETSIZE(HEADER(addr)))
 
-#define EXTENDSIZE (1<<4) /* bytes */
+#define EXTENDSIZE (1<<12) /* bytes */
 #define MINBLOCKSIZE 16
 
 
@@ -260,7 +260,6 @@ void *calloc (size_t nmemb, size_t size){
  *      so nah!
  */
 void mm_checkheap(int verbose){
-    //printf("%d ",mem_heap_hi() + 1);
     if (GETSIZE(HEADER(mem_heap_hi() + 1))){
         printf("checkheap error with epilogue not with size 0\n");
     }
