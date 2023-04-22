@@ -71,24 +71,8 @@ static char* prev_listp; //use for denote the prev find block for next fit
  * coalesce - Called when we try to merge the prev block and next block.
  */
 static char* coalesce(char *bp){
-    //printf("reach this area3.5\n");
-    //printf("%d\n",*((int *)(HEADER(bp) - WSIZE)));
-    //printf("%d\n",(int) GETSIZE(HEADER(bp) - WSIZE));
-    //printf("%d\n",(int) HEADER(PREVBLOCK(bp)));
     int prev_alloc = GETALLOC(HEADER(PREVBLOCK(bp)));
-    //printf("reach this area3.78\n");
     int next_alloc = GETALLOC(HEADER(NEXTBLOCK(bp)));
-    //printf("reach this area4\n");
-    //printf("%d %d\n",prev_alloc,next_alloc);
-    /* if (((int) HEADER(PREVBLOCK(bp))) == 688156 || ((int) HEADER(bp)) <= 10000 || ((int) HEADER(NEXTBLOCK(bp))) == 688156){
-        printf("Coalesce!\n");
-        printf("header at %d with size %d and alloc %d\n", (int) HEADER(bp),GETSIZE(HEADER(bp)),GETALLOC(HEADER(bp)));
-        printf("footer at %d with size %d and alloc %d\n", (int) FOOTER(bp),GETSIZE(FOOTER(bp)),GETALLOC(FOOTER(bp)));
-        printf("prev header at %d with size %d and alloc %d\n", (int) HEADER(PREVBLOCK(bp)),GETSIZE(HEADER(PREVBLOCK(bp))),GETALLOC(HEADER(PREVBLOCK(bp))));
-        printf("next header at %d with size %d and alloc %d\n", (int) HEADER(NEXTBLOCK(bp)),GETSIZE(HEADER(NEXTBLOCK(bp))),GETALLOC(HEADER(NEXTBLOCK(bp))));
-        printf("next footer at %d with size %d and alloc %d\n", (int) FOOTER(NEXTBLOCK(bp)),GETSIZE(FOOTER(NEXTBLOCK(bp))),GETALLOC(FOOTER(NEXTBLOCK(bp))));
-        printf("%d %d\n\n",prev_alloc,next_alloc);
-    } */
     if (prev_alloc && !next_alloc){ //I write wrong condition first
         int size = GETSIZE(HEADER(bp)) + GETSIZE(HEADER(NEXTBLOCK(bp)));
         PUT(FOOTER(NEXTBLOCK(bp)), PACK(size, 0)); //We must modify FOOTER first!!
@@ -115,12 +99,9 @@ static char* extend_heap(size_t extend_size){
     char *bp;
     if ((bp = mem_sbrk(extend_size)) == (void *)-1)
         return NULL;
-    //printf("reach this area2\n");
     PUT(HEADER(bp), PACK(extend_size, 0));
     PUT(FOOTER(bp), PACK(extend_size, 0));
     PUT(HEADER(NEXTBLOCK(bp)), PACK(0, 1));
-    //printf("reach this area3\n");
-    //printf("%d\n",(int) bp);
     return coalesce(bp);
 }
 
@@ -132,16 +113,11 @@ static char* extend_heap(size_t extend_size){
 int mm_init(void){
     if ((heap_listp = mem_sbrk(4 * WSIZE)) == (void *)-1)
         return -1;
-    //printf("%d\n",(int) heap_listp);
     PUT(heap_listp, 0);
     PUT(heap_listp + WSIZE, PACK(DSIZE,1)); //header of the prologue block
     PUT(heap_listp + 2 * WSIZE, PACK(DSIZE,1)); // footer of the prologue block
     PUT(heap_listp + 3 * WSIZE, PACK(0,1)); //header of the epilogue block
     heap_listp += (4 * WSIZE);
-    //printf("%d\n",(int) heap_listp);
-    //printf("%d\n",*((int *) (heap_listp - DSIZE)));
-    //printf("%d\n",GETSIZE(heap_listp - DSIZE));
-    //printf("reach this area1\n");
     prev_listp = heap_listp;
     if (extend_heap(EXTENDSIZE) == NULL)
         return -1;
@@ -153,17 +129,16 @@ int mm_init(void){
  * Use Next fit
  */
 static char* find_fit(size_t size){
-    //printf("%d\n",(int) prev_listp);
     for (char *bp = prev_listp;GETSIZE(HEADER(bp)) != 0;bp += GETSIZE(HEADER(bp))){
         if ((int) (bp) == 0) printf("%d 1\n",(int) NEXTBLOCK(bp));
-        //printf("%d\n",(int) bp);
         if (GETSIZE(HEADER(bp)) >= size && !GETALLOC(HEADER(bp))){
+            prev_listp = bp;
             return bp;
         }
     }
     for (char *bp = heap_listp;bp != prev_listp;bp += GETSIZE(HEADER(bp))){
-        //if (*(bp) == 0) printf("%ld 2\n",size);
         if (GETSIZE(HEADER(bp)) >= size && !GETALLOC(HEADER(bp))){
+            prev_listp = bp;
             return bp;
         }
     }
@@ -181,26 +156,12 @@ void split_block(char *bp,size_t asize){
         PUT(HEADER(NEXTBLOCK(bp)), PACK(size - asize, 0));
         PUT(FOOTER(NEXTBLOCK(bp)), PACK(size - asize, 0));
     }
-    /* if (((int) HEADER(bp)) == 2068){
-        printf("Split block!\n");
-        printf("header at %d with size %d and alloc %d\n", (int) HEADER(bp),GETSIZE(HEADER(bp)),GETALLOC(HEADER(bp)));
-        printf("prev header at %d with size %d and alloc %d\n", (int) HEADER(PREVBLOCK(bp)),GETSIZE(HEADER(PREVBLOCK(bp))),GETALLOC(HEADER(PREVBLOCK(bp))));
-        printf("next header at %d with size %d and alloc %d\n", (int) HEADER(NEXTBLOCK(bp)),GETSIZE(HEADER(NEXTBLOCK(bp))),GETALLOC(HEADER(NEXTBLOCK(bp))));
-        printf("next footer at %d with size %d and alloc %d\n\n", (int) FOOTER(NEXTBLOCK(bp)),GETSIZE(FOOTER(NEXTBLOCK(bp))),GETALLOC(FOOTER(NEXTBLOCK(bp))));
-    } */
 }
 
 /*
  * place - Place a block with "size" into a space
  */
 void place(char *bp,size_t asize){
-    /* if (((int) HEADER(PREVBLOCK(bp))) == 2068 || ((int) HEADER(bp)) <= 10000 || ((int) HEADER(NEXTBLOCK(bp))) == 2068){
-        printf("header at %d with size %d and alloc %d\n", (int) HEADER(bp),GETSIZE(HEADER(bp)),GETALLOC(HEADER(bp)));
-        printf("footer at %d with size %d and alloc %d\n", (int) FOOTER(bp),GETSIZE(FOOTER(bp)),GETALLOC(FOOTER(bp)));
-        printf("prev header at %d with size %d and alloc %d\n", (int) HEADER(PREVBLOCK(bp)),GETSIZE(HEADER(PREVBLOCK(bp))),GETALLOC(HEADER(PREVBLOCK(bp))));
-        printf("next header at %d with size %d and alloc %d\n", (int) HEADER(NEXTBLOCK(bp)),GETSIZE(HEADER(NEXTBLOCK(bp))),GETALLOC(HEADER(NEXTBLOCK(bp))));
-        printf("next footer at %d with size %d and alloc %d\n\n", (int) FOOTER(NEXTBLOCK(bp)),GETSIZE(FOOTER(NEXTBLOCK(bp))),GETALLOC(FOOTER(NEXTBLOCK(bp))));
-    } */
     size_t size = GETSIZE(HEADER(bp));
     PUT(HEADER(bp), PACK(size, 1));
     PUT(FOOTER(bp), PACK(size, 1));
@@ -215,10 +176,7 @@ void place(char *bp,size_t asize){
 void *malloc(size_t size){
     char *bp;
     int newsize = ALIGN(size + 2 * SIZE_T_SIZE);
-    //printf("reach this malloc area ye\n");
     if ((bp = find_fit(newsize)) != NULL){
-        //printf("reach this malloc area ye2\n");
-        //if (*(bp) == 0) printf("%ld\n",size);
         place(bp, newsize);
         return bp;
     } else {
@@ -233,11 +191,12 @@ void *malloc(size_t size){
  * free - We just change the alloc bit from 0 to 1 and do coalesce
  */
 void free(void *ptr){
+    if (ptr == NULL) return;
+    if (!GETALLOC(HEADER(ptr))) return;
     size_t size = GETSIZE(HEADER(ptr));
 
     PUT(HEADER(ptr), PACK(size, 0));
     PUT(FOOTER(ptr), PACK(size, 0));
-
     coalesce(ptr);
 }
 
