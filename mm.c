@@ -60,7 +60,7 @@
 #define PREVBLOCK(addr) (addr - GETSIZE(HEADER(addr) - WSIZE))
 #define NEXTBLOCK(addr) (addr + GETSIZE(HEADER(addr)))
 
-#define EXTENDSIZE (1<<12) /* bytes */
+#define EXTENDSIZE (1<<8) /* bytes */
 #define MINBLOCKSIZE 16
 
 #define SETPREV(addr, prev) (*((unsigned int *) (addr)) = prev) //type and size should be careful!!!!
@@ -72,7 +72,7 @@
 static char* heap_listp; //use to denote the first block
 //static char* prev_listp; //use for denote the prev find block for next fit
 static char* free_list_head;
-unsigned int *test;
+//unsigned int *test;
 
 /*
  * insert_to_free_list - Called when we free a block and insert to the beginning of the block
@@ -117,28 +117,6 @@ void remove_from_free_list(char *bp){
 static char* coalesce(char *bp){
     int prev_alloc = GETALLOC(HEADER(PREVBLOCK(bp)));
     int next_alloc = GETALLOC(HEADER(NEXTBLOCK(bp)));
-    /* printf("%d\n",(int) bp);
-    if (((int) HEADER(PREVBLOCK(bp))) >= 630000 || ((int) HEADER(bp)) >= 630000 || ((int) HEADER(NEXTBLOCK(bp))) == 636260){
-        printf("Coal it!!\n");
-        printf("%d\n",*((unsigned int *)HEADER(bp)));
-        printf("header at %d with size %d and alloc %d\n", (int) HEADER(bp),GETSIZE(HEADER(bp)),GETALLOC(HEADER(bp)));
-        printf("footer at %d with size %d and alloc %d\n", (int) FOOTER(bp),GETSIZE(FOOTER(bp)),GETALLOC(FOOTER(bp)));
-        printf("prev header at %d with size %d and alloc %d\n", (int) HEADER(PREVBLOCK(bp)),GETSIZE(HEADER(PREVBLOCK(bp))),GETALLOC(HEADER(PREVBLOCK(bp))));
-        printf("prev footer at %d with size %d and alloc %d\n", (int) FOOTER(PREVBLOCK(bp)),GETSIZE(FOOTER(PREVBLOCK(bp))),GETALLOC(FOOTER(PREVBLOCK(bp))));
-        printf("next header at %d with size %d and alloc %d\n", (int) HEADER(NEXTBLOCK(bp)),GETSIZE(HEADER(NEXTBLOCK(bp))),GETALLOC(HEADER(NEXTBLOCK(bp))));
-        printf("next footer at %d with size %d and alloc %d\n", (int) FOOTER(NEXTBLOCK(bp)),GETSIZE(FOOTER(NEXTBLOCK(bp))),GETALLOC(FOOTER(NEXTBLOCK(bp))));
-        printf("header prev at %u next at %u\n",(unsigned int) (bp),(unsigned int)((unsigned int *) (bp) + 1));
-        printf("header prev at %u next at %u\n",GETPREV(bp),GETNEXT(bp));
-        printf("%d\n",mem_heap_hi());
-    }
-    if ((int) mem_heap_hi() == 917567) {
-            test = mem_heap_hi() - 4103;
-        }
-    if ((int) mem_heap_hi() >= 917567) {
-        printf("%u ?\n",*(test));
-        printf("%d %u ?\n\n",(int) test,*(test));
-    } */
-    //printf("hello!!\n");
     if (prev_alloc && !next_alloc){ //I write wrong condition first
         remove_from_free_list(NEXTBLOCK(bp));
         int size = GETSIZE(HEADER(bp)) + GETSIZE(HEADER(NEXTBLOCK(bp)));
@@ -159,7 +137,6 @@ static char* coalesce(char *bp){
         bp = PREVBLOCK(bp);
     } 
     insert_to_free_list(bp);
-    //printf("hello!!\n");
     return bp;
 }
 
@@ -175,7 +152,6 @@ static char* extend_heap(size_t extend_size){
     SETPREV(bp, 0);
     SETNEXT(bp, 0);
     PUT(HEADER(NEXTBLOCK(bp)), PACK(0, 1));
-    //printf("hello!\n");
     return coalesce(bp);
 }
 
@@ -193,7 +169,6 @@ int mm_init(void){
     PUT(heap_listp + 2 * WSIZE, PACK(DSIZE,1)); // footer of the prologue block
     PUT(heap_listp + 3 * WSIZE, PACK(0,1)); //header of the epilogue block
     heap_listp += (4 * WSIZE);
-    //printf("hello\n");
     if (extend_heap(EXTENDSIZE) == NULL)
         return -1;
     return 0;
@@ -205,32 +180,6 @@ int mm_init(void){
  */
 static char* find_fit(size_t size){
     for (char *bp = free_list_head;bp != 0;bp = (char *)((long)GETNEXT(bp))){
-        /* printf("%d\n",(int) bp);
-        if (((int) HEADER(PREVBLOCK(bp))) >= 630000 || ((int) HEADER(bp)) >= 630000 || ((int) HEADER(NEXTBLOCK(bp))) == 636260){
-            printf("Find it!!\n");
-            printf("%d\n",*((unsigned int *)HEADER(bp)));
-            printf("header at %d with size %d and alloc %d\n", (int) HEADER(bp),GETSIZE(HEADER(bp)),GETALLOC(HEADER(bp)));
-            printf("footer at %d with size %d and alloc %d\n", (int) FOOTER(bp),GETSIZE(FOOTER(bp)),GETALLOC(FOOTER(bp)));
-            printf("prev header at %d with size %d and alloc %d\n", (int) HEADER(PREVBLOCK(bp)),GETSIZE(HEADER(PREVBLOCK(bp))),GETALLOC(HEADER(PREVBLOCK(bp))));
-            printf("prev footer at %d with size %d and alloc %d\n", (int) FOOTER(PREVBLOCK(bp)),GETSIZE(FOOTER(PREVBLOCK(bp))),GETALLOC(FOOTER(PREVBLOCK(bp))));
-            printf("next header at %d with size %d and alloc %d\n", (int) HEADER(NEXTBLOCK(bp)),GETSIZE(HEADER(NEXTBLOCK(bp))),GETALLOC(HEADER(NEXTBLOCK(bp))));
-            printf("next footer at %d with size %d and alloc %d\n", (int) FOOTER(NEXTBLOCK(bp)),GETSIZE(FOOTER(NEXTBLOCK(bp))),GETALLOC(FOOTER(NEXTBLOCK(bp))));
-            printf("header prev at %u next at %u\n",(unsigned int) (bp),(unsigned int)((unsigned int *) (bp) + 1));
-            printf("header prev at %u next at %u\n",GETPREV(bp),GETNEXT(bp));
-            printf("%d\n",mem_heap_hi());
-        }
-        //if ((int) mem_heap_hi() >= 917567) printf("%u ?\n",*((unsigned int*)(((unsigned long) mem_heap_hi())-((unsigned long) mem_heap_hi() - 913384))));
-        if ((int) mem_heap_hi() == 917567) {
-            test = mem_heap_hi() - 4103;
-        }
-        if ((int) mem_heap_hi() >= 917567) {
-            printf("%u ?\n",*(test));
-            printf("%d %u ?\n\n",(int) test,*(test));
-        }
-        if (GETPREV(bp) > (unsigned int)mem_heap_hi() + 100 || GETNEXT(bp) > (unsigned int) mem_heap_hi() + 100) 
-            exit(0);
-        printf("header prev at %u next at %u\n",(unsigned int) (bp),(unsigned int)((unsigned int *) (bp) + 1));
-        printf("header prev at %u next at %u\n",GETPREV(bp),GETNEXT(bp)); */
         if (GETSIZE(HEADER(bp)) >= size){
             return bp;
         }
