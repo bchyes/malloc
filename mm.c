@@ -138,6 +138,7 @@ static char* coalesce(char *bp){
         printf("%u ?\n",*(test));
         printf("%d %u ?\n\n",(int) test,*(test));
     } */
+    //printf("hello!!\n");
     if (prev_alloc && !next_alloc){ //I write wrong condition first
         remove_from_free_list(NEXTBLOCK(bp));
         int size = GETSIZE(HEADER(bp)) + GETSIZE(HEADER(NEXTBLOCK(bp)));
@@ -158,6 +159,7 @@ static char* coalesce(char *bp){
         bp = PREVBLOCK(bp);
     } 
     insert_to_free_list(bp);
+    //printf("hello!!\n");
     return bp;
 }
 
@@ -173,6 +175,7 @@ static char* extend_heap(size_t extend_size){
     SETPREV(bp, 0);
     SETNEXT(bp, 0);
     PUT(HEADER(NEXTBLOCK(bp)), PACK(0, 1));
+    //printf("hello!\n");
     return coalesce(bp);
 }
 
@@ -184,11 +187,13 @@ static char* extend_heap(size_t extend_size){
 int mm_init(void){
     if ((heap_listp = mem_sbrk(4 * WSIZE)) == (void *)-1)
         return -1;
+    free_list_head = NULL; //We need to do this else we can just do 1 time but not 12 times
     PUT(heap_listp, 0);
     PUT(heap_listp + WSIZE, PACK(DSIZE,1)); //header of the prologue block
     PUT(heap_listp + 2 * WSIZE, PACK(DSIZE,1)); // footer of the prologue block
     PUT(heap_listp + 3 * WSIZE, PACK(0,1)); //header of the epilogue block
     heap_listp += (4 * WSIZE);
+    //printf("hello\n");
     if (extend_heap(EXTENDSIZE) == NULL)
         return -1;
     return 0;
@@ -222,7 +227,10 @@ static char* find_fit(size_t size){
             printf("%u ?\n",*(test));
             printf("%d %u ?\n\n",(int) test,*(test));
         }
-        if (GETPREV(bp) > (unsigned int)mem_heap_hi() + 100 || GETNEXT(bp) > (unsigned int) mem_heap_hi() + 100) exit(0); */
+        if (GETPREV(bp) > (unsigned int)mem_heap_hi() + 100 || GETNEXT(bp) > (unsigned int) mem_heap_hi() + 100) 
+            exit(0);
+        printf("header prev at %u next at %u\n",(unsigned int) (bp),(unsigned int)((unsigned int *) (bp) + 1));
+        printf("header prev at %u next at %u\n",GETPREV(bp),GETNEXT(bp)); */
         if (GETSIZE(HEADER(bp)) >= size){
             return bp;
         }

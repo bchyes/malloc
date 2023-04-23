@@ -31,7 +31,7 @@
  **********************/
 
 /* OJ */
-//#define OJ
+#define OJ
 
 /* Misc */
 #define MAXLINE     1024 /* max string size */
@@ -1070,15 +1070,16 @@ static double eval_mm_util(trace_t *trace, int tracenum)
 	char *newp, *oldp;
 
 	reinit_trace(trace);
-	printf("?\n");
+	//printf("?\n");
 	/* initialize the heap and the mm malloc package */
 	mem_reset_brk();
 	if (mm_init() < 0)
 		app_error("trace %d: mm_init failed in eval_mm_util", tracenum);
-
+	//printf("??\n");
 	for (i = 0;  i < trace->num_ops;  i++) {
+		//printf("%d %d\n",i,trace->ops[i].type);
 		switch (trace->ops[i].type) {
-			//printf("%d %d\n",i,trace->ops[i].type);
+			
 			case ALLOC: /* mm_alloc */
 				index = trace->ops[i].index;
 				size = trace->ops[i].size;
