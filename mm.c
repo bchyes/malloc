@@ -60,12 +60,67 @@
 #define PREVBLOCK(addr) (addr - GETSIZE(HEADER(addr) - WSIZE))
 #define NEXTBLOCK(addr) (addr + GETSIZE(HEADER(addr)))
 
-#define EXTENDSIZE (1<<8) /* bytes */
+#define EXTENDSIZE (1<<12) /* bytes */
 #define MINBLOCKSIZE 16
+
+#define SETPREV(addr, prev) (*((unsigned int *) (addr)) = (unsigned int)prev)
+#define SETNEXT(addr, next) (*((unsigned int *) (addr) + 1) = (unsigned int)next) //pointer plus 1 equals to plus sizeof the type!! So we just need to plus 1 but not WSIZE
+#define GETPREV(addr) (*((unsigned int *) (addr)))
+#define GETNEXT(addr) (*((unsigned int *) (addr) + 1))
 
 
 static char* heap_listp; //use to denote the first block
-static char* prev_listp; //use for denote the prev find block for next fit
+//static char* prev_listp; //use for denote the prev find block for next fit
+static char* free_list_head;
+
+/*
+ * insert_to_free_list - Called when we free a block and insert to the beginning of the block
+ */
+void insert_to_free_list(char *bp){
+    if (bp == NULL) return;
+    if (free_list_head == NULL){
+        free_list_head = bp;
+        return;
+    }
+    SETNEXT(bp, (unsigned int *)free_list_head);
+    SETPREV(free_list_head, (unsigned int *)bp);
+    if ((int) (bp) == 636264 || (int) (bp) == 633544 || (int) bp == 633296){
+        printf("%d %d insert\n",GETPREV(bp),GETNEXT(bp));
+    }
+    if (free_list_head != NULL && ((int) (free_list_head) == 636264 || (int) (free_list_head) == 633544)){
+        printf("%d insert>\n",(int) bp);
+        printf("%d %d insert?\n",GETPREV(free_list_head),GETNEXT(free_list_head));
+    }
+    free_list_head = bp;
+    if (free_list_head != NULL && ((int) (free_list_head) == 636000)){
+        printf("%d \n",GETNEXT(free_list_head));
+    }
+}
+
+/*
+ * remove_from_free_list - Called when we use a free block
+ */
+void remove_from_free_list(char *bp){
+    if (bp == NULL) return;
+    SETPREV(bp, 0);
+    SETNEXT(bp, 0);
+    unsigned int prev = GETPREV(bp); // not unsigned int ?
+    unsigned int next = GETNEXT(bp);
+    if ((int) (bp) == 633544 || (int) (bp) == 633672){
+        printf("%d %d remove\n",GETPREV(bp),GETNEXT(bp));
+    }
+    if (!prev && !next){
+        free_list_head = NULL;
+    } else if (prev && !next){
+        SETNEXT(prev, 0);
+    } else if (!prev && next){
+        SETPREV(next, 0);
+        free_list_head = next;
+    } else {
+        SETNEXT((unsigned int *)prev, next); //
+        SETPREV((unsigned int *)next, prev);
+    }
+}
 
 /*
  * coalesce - Called when we try to merge the prev block and next block.
@@ -73,28 +128,42 @@ static char* prev_listp; //use for denote the prev find block for next fit
 static char* coalesce(char *bp){
     int prev_alloc = GETALLOC(HEADER(PREVBLOCK(bp)));
     int next_alloc = GETALLOC(HEADER(NEXTBLOCK(bp)));
+    if (((int) HEADER(PREVBLOCK(bp))) >= 630000 || ((int) HEADER(bp)) >= 630000 || ((int) HEADER(NEXTBLOCK(bp))) == 636260){
+            printf("Find it in coal!!\n");
+            printf("%d\n\n",*(HEADER(bp)));
+            printf("header at %d with size %d and alloc %d\n", (int) HEADER(bp),GETSIZE(HEADER(bp)),GETALLOC(HEADER(bp)));
+            printf("footer at %d with size %d and alloc %d\n", (int) FOOTER(bp),GETSIZE(FOOTER(bp)),GETALLOC(FOOTER(bp)));
+            printf("prev header at %d with size %d and alloc %d\n", (int) HEADER(PREVBLOCK(bp)),GETSIZE(HEADER(PREVBLOCK(bp))),GETALLOC(HEADER(PREVBLOCK(bp))));
+            printf("next header at %d with size %d and alloc %d\n", (int) HEADER(NEXTBLOCK(bp)),GETSIZE(HEADER(NEXTBLOCK(bp))),GETALLOC(HEADER(NEXTBLOCK(bp))));
+            printf("next footer at %d with size %d and alloc %d\n", (int) FOOTER(NEXTBLOCK(bp)),GETSIZE(FOOTER(NEXTBLOCK(bp))),GETALLOC(FOOTER(NEXTBLOCK(bp))));
+            printf("%d\n\n",mem_heap_hi());
+        } 
     if (prev_alloc && !next_alloc){ //I write wrong condition first
-        if (prev_listp == NEXTBLOCK(bp)) // We need to move this to the block and before we coalesce
-            prev_listp = bp;
+        //if (prev_listp == NEXTBLOCK(bp)) // We need to move this to the block and before we coalesce
+        //    prev_listp = bp;
+        remove_from_free_list(NEXTBLOCK(bp));
         int size = GETSIZE(HEADER(bp)) + GETSIZE(HEADER(NEXTBLOCK(bp)));
         PUT(FOOTER(NEXTBLOCK(bp)), PACK(size, 0)); //We must modify FOOTER first!!
         PUT(HEADER(bp), PACK(size, 0));
-        return bp;
     } else if (!prev_alloc && next_alloc){
-        if (prev_listp == bp)
-            prev_listp = PREVBLOCK(bp);
+        //if (prev_listp == bp)
+        //    prev_listp = PREVBLOCK(bp);
+        remove_from_free_list(PREVBLOCK(bp));
         int size = GETSIZE(HEADER(bp)) + GETSIZE(HEADER(PREVBLOCK(bp)));
         PUT(HEADER(PREVBLOCK(bp)), PACK(size, 0));
         PUT(FOOTER(bp), PACK(size, 0));
-        return PREVBLOCK(bp); //We must return the coalesce block!!
+        bp = PREVBLOCK(bp); //We must return the coalesce block!!
     } else if (!prev_alloc && !next_alloc){
-        if (prev_listp == bp || prev_listp == NEXTBLOCK(bp))
-            prev_listp = PREVBLOCK(bp);
+        //if (prev_listp == bp || prev_listp == NEXTBLOCK(bp))
+        //    prev_listp = PREVBLOCK(bp);
+        remove_from_free_list(PREVBLOCK(bp));
+        remove_from_free_list(NEXTBLOCK(bp));
         int size = GETSIZE(HEADER(bp)) + GETSIZE(HEADER(NEXTBLOCK(bp))) + GETSIZE(HEADER(PREVBLOCK(bp)));
         PUT(FOOTER(NEXTBLOCK(bp)), PACK(size, 0));
         PUT(HEADER(PREVBLOCK(bp)), PACK(size, 0));
-        return PREVBLOCK(bp);
+        bp = PREVBLOCK(bp);
     } 
+    insert_to_free_list(bp);
     return bp;
 }
 
@@ -107,6 +176,8 @@ static char* extend_heap(size_t extend_size){
         return NULL;
     PUT(HEADER(bp), PACK(extend_size, 0));
     PUT(FOOTER(bp), PACK(extend_size, 0));
+    SETPREV(bp, 0);
+    SETNEXT(bp, 0);
     PUT(HEADER(NEXTBLOCK(bp)), PACK(0, 1));
     return coalesce(bp);
 }
@@ -124,9 +195,10 @@ int mm_init(void){
     PUT(heap_listp + 2 * WSIZE, PACK(DSIZE,1)); // footer of the prologue block
     PUT(heap_listp + 3 * WSIZE, PACK(0,1)); //header of the epilogue block
     heap_listp += (4 * WSIZE);
-    prev_listp = heap_listp;
+    //prev_listp = heap_listp;
     if (extend_heap(EXTENDSIZE) == NULL)
         return -1;
+    printf("HELLO\n");
     return 0;
 }
 
@@ -135,18 +207,71 @@ int mm_init(void){
  * Use Next fit
  */
 static char* find_fit(size_t size){
-    for (char *bp = prev_listp;GETSIZE(HEADER(bp)) != 0;bp += GETSIZE(HEADER(bp))){
+    printf("%d\n",(int) free_list_head);
+    printf("%d !!!!\n",mem_heap_hi() + 1);
+    if (mem_heap_hi() + 1 >= 634943) {
+        unsigned int *test = mem_heap_hi() - 1403;
+        printf("%d size\n",*(test));
+        printf("%d size1\n",*(test + 1));
+        printf("%d size2\n",*(test + 2));
+        
+        if (free_list_head != NULL) printf("%d size\n",GETNEXT(free_list_head));
+        if (free_list_head != NULL) printf("%d size\n",((unsigned int *) (free_list_head)));
+        if (free_list_head != NULL) printf("%d size\n",((unsigned int *) (free_list_head) + 1));
+    }
+    for (char *bp = free_list_head;bp != 0;bp = GETNEXT(bp)){
+        if (mem_heap_hi() + 1 >= 634943) {
+            unsigned int *test = mem_heap_hi() - 1403;
+            printf("%d addr\n",(test));
+            printf("%d size\n",*(test));
+            printf("%d size1\n",*(test + 1));
+            printf("%d size2\n",*(test + 2));
+            printf("%d size-1\n",*(test - 1));
+            
+            //if (free_list_head != NULL) printf("%d size\n",GETNEXT(free_list_head));
+            //if (free_list_head != NULL) printf("%d size\n",((unsigned int *) (free_list_head)));
+            //if (free_list_head != NULL) printf("%d size\n",((unsigned int *) (free_list_head) + 1));
+        }
+        printf("%d\n",(int) bp);
+        //printf("%d\n",GETSIZE(HEADER(bp)));
+        printf("%d size bp\n",((unsigned int *) (bp) + 1));
+        if ((int) ((unsigned int *) (bp)) >= 630000) printf("%d size bp\n",((unsigned int *) (bp) - 62));
+        if ((int) ((unsigned int *) (bp)) <= 635000 && (int) ((unsigned int *) (bp)) >= 630000) printf("%d size bp\n",((unsigned int *) (bp) + 62));
+        if ((int) ((unsigned int *) (bp)) <= 635000 && (int) ((unsigned int *) (bp)) >= 630000) printf("%d size bp\n",* ((unsigned int *) (bp) + 61));
+        printf("%d size bp\n",* ((unsigned int *) (bp) - 1));
+        printf("%d size bp\n",* ((unsigned int *) (bp) - 2));
+        printf("%d header\n",(int) HEADER(bp));
+        printf("%d header\n",(int) PREVBLOCK(bp));
+        if (((int) HEADER(PREVBLOCK(bp))) >= 630000 || ((int) HEADER(bp)) >= 630000 || ((int) HEADER(NEXTBLOCK(bp))) == 636260){
+            printf("Find it!!\n");
+            printf("%d\n\n",*(HEADER(bp)));
+            printf("header at %d with size %d and alloc %d\n", (int) HEADER(bp),GETSIZE(HEADER(bp)),GETALLOC(HEADER(bp)));
+            printf("footer at %d with size %d and alloc %d\n", (int) FOOTER(bp),GETSIZE(FOOTER(bp)),GETALLOC(FOOTER(bp)));
+            printf("prev header at %d with size %d and alloc %d\n", (int) HEADER(PREVBLOCK(bp)),GETSIZE(HEADER(PREVBLOCK(bp))),GETALLOC(HEADER(PREVBLOCK(bp))));
+            printf("next header at %d with size %d and alloc %d\n", (int) HEADER(NEXTBLOCK(bp)),GETSIZE(HEADER(NEXTBLOCK(bp))),GETALLOC(HEADER(NEXTBLOCK(bp))));
+            printf("next footer at %d with size %d and alloc %d\n", (int) FOOTER(NEXTBLOCK(bp)),GETSIZE(FOOTER(NEXTBLOCK(bp))),GETALLOC(FOOTER(NEXTBLOCK(bp))));
+            printf("header prev at %d next at %d\n",GETPREV(bp),GETNEXT(bp));
+            printf("%d\n\n",mem_heap_hi());
+        } 
+        /* if (((int) HEADER(bp)) == 636260){
+            printf("Find it!!\n");
+            printf("%d\n\n",*(HEADER(bp)));
+            printf("%d\n\n",mem_heap_hi());
+            printf("header at %d with size %d and alloc %d\n", (int) HEADER(bp),GETSIZE(HEADER(bp)),GETALLOC(HEADER(bp)));
+        } */
+        printf("%d?\n",GETNEXT(bp));
+        if (GETSIZE(HEADER(bp)) >= size){
+            //prev_listp = bp;
+            printf("COME IN?\n");
+            return bp;
+        }
+    }
+    /* for (char *bp = heap_listp;bp != prev_listp;bp += GETSIZE(HEADER(bp))){
         if (GETSIZE(HEADER(bp)) >= size && !GETALLOC(HEADER(bp))){
             prev_listp = bp;
             return bp;
         }
-    }
-    for (char *bp = heap_listp;bp != prev_listp;bp += GETSIZE(HEADER(bp))){
-        if (GETSIZE(HEADER(bp)) >= size && !GETALLOC(HEADER(bp))){
-            prev_listp = bp;
-            return bp;
-        }
-    }
+    } */
     return NULL;
 }
 
@@ -160,6 +285,7 @@ void split_block(char *bp,size_t asize){
         PUT(FOOTER(bp), PACK(asize, 1));
         PUT(HEADER(NEXTBLOCK(bp)), PACK(size - asize, 0));
         PUT(FOOTER(NEXTBLOCK(bp)), PACK(size - asize, 0));
+        insert_to_free_list(NEXTBLOCK(bp));
     }
 }
 
@@ -168,6 +294,9 @@ void split_block(char *bp,size_t asize){
  */
 void place(char *bp,size_t asize){
     size_t size = GETSIZE(HEADER(bp));
+
+    remove_from_free_list(bp);
+
     PUT(HEADER(bp), PACK(size, 1));
     PUT(FOOTER(bp), PACK(size, 1));
 
@@ -181,7 +310,9 @@ void place(char *bp,size_t asize){
 void *malloc(size_t size){
     char *bp;
     int newsize = ALIGN(size + SIZE_T_SIZE);
+    printf("HELLO!!\n");
     if ((bp = find_fit(newsize)) != NULL){
+        printf("HELLO!!!\n");
         place(bp, newsize);
         return bp;
     } else {
@@ -200,6 +331,8 @@ void free(void *ptr){
     if (!GETALLOC(HEADER(ptr))) return;
     size_t size = GETSIZE(HEADER(ptr));
 
+    SETPREV(ptr, 0);
+    SETNEXT(ptr, 0);
     PUT(HEADER(ptr), PACK(size, 0));
     PUT(FOOTER(ptr), PACK(size, 0));
     coalesce(ptr);
@@ -256,8 +389,7 @@ void *calloc (size_t nmemb, size_t size){
 }
 
 /*
- * mm_checkheap - There are no bugs in my code, so I don't need to check,
- *      so nah!
+ * mm_checkheap - There are no bugs in my code, so I don't need to check.
  */
 void mm_checkheap(int verbose){
     if (GETSIZE(HEADER(mem_heap_hi() + 1))){
@@ -268,10 +400,11 @@ void mm_checkheap(int verbose){
             printf("checkheap error with header and footer not match at %d\n", (int) bp);
             printf("header at %d with size %d and alloc %d\n", (int) HEADER(bp),GETSIZE(HEADER(bp)),GETALLOC(HEADER(bp)));
             printf("FOOTER at %d with size %d and alloc %d\n", (int) FOOTER(bp),GETSIZE(FOOTER(bp)),GETALLOC(FOOTER(bp)));
-            exit(0);
+            //exit(0);
         }
         if (bp != heap_listp && !GETALLOC(HEADER(bp)) && !GETALLOC(HEADER(PREVBLOCK(bp)))){
             printf("checkheap error with two continous heaps are free at %d %d\n", (int) PREVBLOCK(bp), (int) bp);
         }
     }
+    //printf("CheckHeap success\n");
 }
