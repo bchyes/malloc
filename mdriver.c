@@ -943,7 +943,7 @@ static int eval_mm_valid(trace_t *trace, range_t **ranges)
 	for (i = 0;  i < trace->num_ops;  i++) {
 		index = trace->ops[i].index;
 		size = trace->ops[i].size;
-		printf("%d %d\n",i,trace->ops[i].type);
+		//printf("%d %d\n",i,trace->ops[i].type);
 		if(debug_mode == DBG_EXPENSIVE) {
 			range_t *r;
 			
@@ -1070,7 +1070,7 @@ static double eval_mm_util(trace_t *trace, int tracenum)
 	char *newp, *oldp;
 
 	reinit_trace(trace);
-
+	printf("?\n");
 	/* initialize the heap and the mm malloc package */
 	mem_reset_brk();
 	if (mm_init() < 0)
@@ -1078,7 +1078,7 @@ static double eval_mm_util(trace_t *trace, int tracenum)
 
 	for (i = 0;  i < trace->num_ops;  i++) {
 		switch (trace->ops[i].type) {
-
+			//printf("%d %d\n",i,trace->ops[i].type);
 			case ALLOC: /* mm_alloc */
 				index = trace->ops[i].index;
 				size = trace->ops[i].size;
