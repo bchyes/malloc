@@ -60,7 +60,7 @@
 #define PREVBLOCK(addr) (addr - GETSIZE(HEADER(addr) - WSIZE))
 #define NEXTBLOCK(addr) (addr + GETSIZE(HEADER(addr)))
 
-#define EXTENDSIZE (1<<12) /* bytes */
+#define EXTENDSIZE (1<<8) /* bytes */
 #define MINBLOCKSIZE 16
 
 
@@ -135,7 +135,7 @@ int mm_init(void){
  * Use Next fit
  */
 static char* find_fit(size_t size){
-    for (char *bp = heap_listp;GETSIZE(HEADER(bp)) != 0;bp += GETSIZE(HEADER(bp))){
+    for (char *bp = prev_listp;GETSIZE(HEADER(bp)) != 0;bp += GETSIZE(HEADER(bp))){
         if (GETSIZE(HEADER(bp)) >= size && !GETALLOC(HEADER(bp))){
             prev_listp = bp;
             return bp;
@@ -180,7 +180,7 @@ void place(char *bp,size_t asize){
  */
 void *malloc(size_t size){
     char *bp;
-    int newsize = ALIGN(size + 2 * SIZE_T_SIZE);
+    int newsize = ALIGN(size + SIZE_T_SIZE);
     if ((bp = find_fit(newsize)) != NULL){
         place(bp, newsize);
         return bp;
