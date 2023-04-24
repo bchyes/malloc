@@ -31,7 +31,7 @@
  **********************/
 
 /* OJ */
-#define OJ
+//#define OJ
 
 /* Misc */
 #define MAXLINE     1024 /* max string size */
@@ -956,9 +956,9 @@ static int eval_mm_valid(trace_t *trace, range_t **ranges)
 				r = r->next;
 			}
 		}
-
+		
 		switch (trace->ops[i].type) {
-
+			
 			case ALLOC: /* mm_malloc */
 
 				/* Call the student's malloc */
