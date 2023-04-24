@@ -31,7 +31,7 @@
  **********************/
 
 /* OJ */
-#define OJ
+//#define OJ
 
 /* Misc */
 #define MAXLINE     1024 /* max string size */
@@ -944,7 +944,7 @@ static int eval_mm_valid(trace_t *trace, range_t **ranges)
 		index = trace->ops[i].index;
 		size = trace->ops[i].size;
 		//printf("%d %d\n",i,trace->ops[i].type);
-		//if (i == 470) exit(0);
+		//if (i == 50) exit(0);
 		if(debug_mode == DBG_EXPENSIVE) {
 			range_t *r;
 			
