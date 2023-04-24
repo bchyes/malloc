@@ -136,22 +136,8 @@ static char* coalesce(char *bp){
         PUT(FOOTER(NEXTBLOCK(bp)), PACK(size, 0));
         PUT(HEADER(PREVBLOCK(bp)), PACK(size, 0));
         bp = PREVBLOCK(bp);
-    } 
-    //if (free_list_head != NULL) printf("%p\n",free_list_head); else printf("NULL\n");
+    }
     insert_to_free_list(bp);
-    /* printf("Coal it!!\n");
-    printf("%d\n",*((unsigned int *)HEADER(bp)));
-    printf("header at %p with size %x and alloc %x\n", HEADER(bp),GETSIZE(HEADER(bp)),GETALLOC(HEADER(bp)));
-    printf("footer at %p with size %x and alloc %x\n", FOOTER(bp),GETSIZE(FOOTER(bp)),GETALLOC(FOOTER(bp)));
-    printf("prev header at %p with size %x and alloc %x\n", HEADER(PREVBLOCK(bp)),GETSIZE(HEADER(PREVBLOCK(bp))),GETALLOC(HEADER(PREVBLOCK(bp))));
-    printf("prev footer at %p with size %x and alloc %x\n", FOOTER(PREVBLOCK(bp)),GETSIZE(FOOTER(PREVBLOCK(bp))),GETALLOC(FOOTER(PREVBLOCK(bp))));
-    printf("next header at %p with size %x and alloc %x\n", HEADER(NEXTBLOCK(bp)),GETSIZE(HEADER(NEXTBLOCK(bp))),GETALLOC(HEADER(NEXTBLOCK(bp))));
-    printf("next footer at %p with size %x and alloc %x\n", FOOTER(NEXTBLOCK(bp)),GETSIZE(FOOTER(NEXTBLOCK(bp))),GETALLOC(FOOTER(NEXTBLOCK(bp))));
-    printf("header prev at %p next at %p\n",bp,((unsigned int *) (bp) + 1));
-    printf("header prev at %lx next at %lx\n",GETPREV(bp),GETNEXT(bp));
-    printf("%p\n",mem_heap_hi());
-    if (free_list_head != NULL) printf("%p\n",free_list_head); else printf("NULL\n");
-    printf("%d %d\n\n",prev_alloc,next_alloc); */
     return bp;
 }
 
@@ -256,9 +242,6 @@ void free(void *ptr){
     if (ptr == NULL) return;
     if (!GETALLOC(HEADER(ptr))) return;
     size_t size = GETSIZE(HEADER(ptr));
-
-    //SETPREV(ptr, 0); We can't do this because we need use this to find prev and next ?? maybe not neccessary 
-    //SETNEXT(ptr, 0);
     PUT(HEADER(ptr), PACK(size, 0));
     PUT(FOOTER(ptr), PACK(size, 0));
     coalesce(ptr);
