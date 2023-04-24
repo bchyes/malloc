@@ -60,7 +60,7 @@
 #define PREVBLOCK(addr) (addr - GETSIZE(HEADER(addr) - WSIZE))
 #define NEXTBLOCK(addr) (addr + GETSIZE(HEADER(addr)))
 
-#define EXTENDSIZE (1<<8) /* bytes */
+#define EXTENDSIZE (1<<10) /* bytes */
 #define MINBLOCKSIZE 16
 
 #define SETPREV(addr, prev) (*((unsigned int *) (addr)) = (unsigned int)((long) prev - (long) mem_heap_lo())) //type and size should be careful!!!!
