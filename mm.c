@@ -100,10 +100,23 @@ static inline void insert_to_free_list(char *bp){
         PUT(now_list_head, (unsigned int)((long)bp - (long)mem_heap_lo()));
         return;
     }
-    unsigned int* next = (unsigned int*)(*now_list_head + mem_heap_lo());
-    SETNEXT(bp, (unsigned int)((long) next));
-    SETPREV(next, (unsigned int)((long) bp));
-    PUT(now_list_head, (unsigned int)((long)bp - (long)mem_heap_lo())); //!
+    char* root = (char *)(*now_list_head + mem_heap_lo());
+    char* next = root;
+    char* prev = (char *)now_list_head;
+    while ((long) next != (long) mem_heap_lo()) {
+        if (GETSIZE(HEADER(next)) >= GETSIZE(HEADER(bp))) break;
+        prev = next;
+        next = (char *) GETNEXT(next);
+    }
+    if ((long) next != (long) mem_heap_lo()){
+        SETNEXT(bp, (unsigned int)((long) next));
+        SETPREV(next, (unsigned int)((long) bp));
+    }
+    if ((long) root == (long) next) PUT(now_list_head, (unsigned int)((long)bp - (long)mem_heap_lo())); //!
+    else {
+        SETNEXT(prev, (unsigned int)((long) bp));
+        SETPREV(bp, (unsigned int)((long) prev));
+    }
 }
 
 /*
