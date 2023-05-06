@@ -73,12 +73,11 @@
 static char* heap_listp; //use to denote the first block
 //static char* prev_listp; //use for denote the prev find block for next fit
 static char* free_list_head;
-unsigned int *test;
 
 /*
  * insert_to_free_list - Called when we free a block and insert to the beginning of the block
  */
-unsigned int* get_free_list_head(int size){
+static inline unsigned int* get_free_list_head(int size){
     long i = 0;
     if (size > 4096) i = 8;
     else if (size <= 32) i = 0;
@@ -89,11 +88,10 @@ unsigned int* get_free_list_head(int size){
     else if (size <= 1024) i = 5;
     else if (size <= 2048) i = 6;
     else if (size <= 4096) i = 7;
-    // printf("i:%ld\n",i);
     return (unsigned int*)(mem_heap_lo() + i * WSIZE);
 }
 
-void insert_to_free_list(char *bp){
+static inline void insert_to_free_list(char *bp){
     if (bp == NULL) return;
     SETPREV(bp, 0);
     SETNEXT(bp, 0); //We need to set 0 because it recently can be part of not free block!!
@@ -111,7 +109,7 @@ void insert_to_free_list(char *bp){
 /*
  * remove_from_free_list - Called when we use a free block
  */
-void remove_from_free_list(char *bp){
+static inline void remove_from_free_list(char *bp){
     if (bp == NULL) return;
     unsigned int* now_list_head = get_free_list_head(GETSIZE(HEADER(bp)));
     char *prev = (char *)(long)GETPREV(bp); // not unsigned int ?
@@ -137,7 +135,7 @@ void remove_from_free_list(char *bp){
 /*
  * coalesce - Called when we try to merge the prev block and next block.
  */
-static char* coalesce(char *bp){
+static inline char* coalesce(char *bp){
     int prev_alloc = GETPREVALLOC(HEADER(bp));
     int next_alloc = GETALLOC(HEADER(NEXTBLOCK(bp)));
     if (prev_alloc && !next_alloc){ //I write wrong condition first
@@ -171,7 +169,7 @@ static char* coalesce(char *bp){
 /*
  * extend_heap - Called when heap has no space.
  */
-static char* extend_heap(size_t extend_size){
+static inline char* extend_heap(size_t extend_size){
     char *bp;
     if ((bp = mem_sbrk(extend_size)) == (void *)-1)
         return NULL;
@@ -217,7 +215,7 @@ int mm_init(void){
  * find_fit - Find a space that is free.
  * Use Next fit
  */
-static char* find_fit(size_t size){
+static inline char* find_fit(size_t size){
     for (unsigned int* now_list_head = get_free_list_head(size); now_list_head != (unsigned int *)(heap_listp - 3 * WSIZE); now_list_head = now_list_head + 1){
         for (char *bp = (char *)(*now_list_head + mem_heap_lo());bp != mem_heap_lo();bp = (char *)((long)GETNEXT(bp))){
             if (GETSIZE(HEADER(bp)) >= size){
@@ -231,7 +229,7 @@ static char* find_fit(size_t size){
 /*
  * split_block - When we place a block and have a lot remaining space, then we split a new block to free.
  */
-void split_block(char *bp,size_t asize){
+static inline void split_block(char *bp,size_t asize){
     size_t size = GETSIZE(HEADER(bp));
     if (size - asize >= MINBLOCKSIZE){
         PUT(HEADER(bp), PACK(asize, 3));
@@ -246,7 +244,7 @@ void split_block(char *bp,size_t asize){
 /*
  * place - Place a block with "size" into a space
  */
-void place(char *bp,size_t asize){
+static inline void place(char *bp,size_t asize){
     size_t size = GETSIZE(HEADER(bp));
     remove_from_free_list(bp);
 
