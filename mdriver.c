@@ -31,7 +31,7 @@
  **********************/
 
 /* OJ */
-//#define OJ
+#define OJ
 
 /* Misc */
 #define MAXLINE     1024 /* max string size */
@@ -160,7 +160,7 @@ static void clear_ranges(range_t **ranges);
 /* These functions implement the debugging code */
 static void init_random_data(void);
 static void check_index(const trace_t *trace, int opnum, int index);
-static void randomize_block(trace_t *trace, int index,char *p);
+static void randomize_block(trace_t *trace, int index);
 
 /* These functions read, allocate, and free storage for traces */
 static trace_t *read_trace(stats_t *stats, const char *tracedir,
@@ -636,35 +636,23 @@ static void init_random_data(void) {
 	}
 }
 
-static void randomize_block(trace_t *traces, int index,char *p) {
+static void randomize_block(trace_t *traces, int index) {
 	size_t size;
 	size_t i;
 	randint_t *block;
-	if (p == 0x80009b6d0) {
-		printf("%p\n",block);
-	}
 	int base;
-	printf("wc\n");
+
 	if(debug_mode == DBG_NONE) return;
-	printf("wc\n");
+
 	traces->block_rand_base[index] = random();
-	printf("bp %p size %x\n",p,((*((unsigned int *) (p))) & ~0x7));
+
 	block = (randint_t*)traces->blocks[index];
-	//if (p == 0x80009b6d0) {
-		printf("???%p\n",traces->blocks[index]);
-	//}
 	size = traces->block_sizes[index] / sizeof(*block);
 	base = traces->block_rand_base[index];
-	printf("bp %p size %x\n",p,((*((unsigned int *) (p))) & ~0x7));
+
 	for(i = 0; i < size; i++) {
 		block[i] = random_data[(base + i) % RANDOM_DATA_LEN];
-		if (p == 0x80009b6d0) {
-			printf("%p\n",traces);
-			printf("%p\n",block);
-			printf("bp %p size %x,xx%d\n",p,((*((unsigned int *) (p))) & ~0x7),i);
-		}
 	}
-	printf("bp %p size %x\n",p,((*((unsigned int *) (p))) & ~0x7));
 }
 
 static void check_index(const trace_t *trace, int opnum, int index) {
@@ -968,7 +956,8 @@ static int eval_mm_valid(trace_t *trace, range_t **ranges)
 				r = r->next;
 			}
 		}
-		printf("%d\n",i);
+		//printf("%d\n",i);
+		//if (i == 4) exit(0);
 		switch (trace->ops[i].type) {
 			
 			case ALLOC: /* mm_malloc */
@@ -978,7 +967,7 @@ static int eval_mm_valid(trace_t *trace, range_t **ranges)
 					malloc_error(trace, i, "mm_malloc failed.");
 					return 0;
 				}
-				printf("bp %p size %x\n",p,((*((unsigned int *) (p))) & ~0x7));
+
 				/*
 				 * Test the range of the new block for correctness and add it
 				 * to the range list if OK. The block must be  be aligned properly,
@@ -990,11 +979,9 @@ static int eval_mm_valid(trace_t *trace, range_t **ranges)
 				/* Remember region */
 				trace->blocks[index] = p;
 				trace->block_sizes[index] = size;
-				printf("bp %p size %x\n",p,((*((unsigned int *) (p))) & ~0x7));
-				printf("bp %p\n",mem_heap_hi());
+
 				/* Set to random data, for debugging. */
-				randomize_block(trace, index,p);
-				printf("bp %p size %x\n",p,((*((unsigned int *) (p))) & ~0x7));
+				randomize_block(trace, index);
 				break;
 
 			case REALLOC: /* mm_realloc */
@@ -1034,12 +1021,12 @@ static int eval_mm_valid(trace_t *trace, range_t **ranges)
 				trace->block_sizes[index] = size;
 
 				/* Set to random data, for debugging. */
-				randomize_block(trace, index,p);
+				randomize_block(trace, index);
 				break;
 
 			case FREE: /* mm_free */
 				check_index(trace, i, index);
-				printf("fr bp %p size %x\n",p,((*((unsigned int *) (p))) & ~0x7));
+
 				/* Remove region from list and call student's free function */
 				if(index == -1) {
 					p = 0;
@@ -1047,7 +1034,6 @@ static int eval_mm_valid(trace_t *trace, range_t **ranges)
 					p = trace->blocks[index];
 					remove_range(ranges, p);
 				}
-				
 				mm_free(p);
 				break;
 
