@@ -62,7 +62,6 @@
 #define NEXTBLOCK(addr) (addr + GETSIZE(HEADER(addr)))
 #define GETPREVALLOC(addr) ((*((unsigned int *) (addr))) & 0x2)
 
-//#define EXTENDSIZE (1<<8) /* bytes */
 #define MINBLOCKSIZE 16
 
 #define SETPREV(addr, prev) (*((unsigned int *) (addr) + 1) = (unsigned int)((long) prev - (long) mem_heap_lo())) //type and size should be careful!!!!
@@ -72,7 +71,6 @@
 
 
 static char* heap_listp; //use to denote the first block
-//static char* prev_listp; //use for denote the prev find block for next fit
 static char* free_list_head;
 
 /*
@@ -101,7 +99,6 @@ static inline void insert_to_free_list(char *bp){
     SETPREV(bp, 0);
     SETNEXT(bp, 0); //We need to set 0 because it recently can be part of not free block!!
     unsigned int* now_list_head = get_free_list_head(GETSIZE(HEADER(bp)));// forget Header
-    //printf("nowlist %p bp %p\n",now_list_head,bp);
     if (!(*now_list_head)){
         PUT(now_list_head, (unsigned int)((long)bp - (long)mem_heap_lo()));
         return;
@@ -109,13 +106,6 @@ static inline void insert_to_free_list(char *bp){
     char* root = (char *)(*now_list_head + mem_heap_lo());
     char* next = root;
     char* prev = (char *)now_list_head;
-    /* printf("prev %p next %p\n",prev,next);
-    printf("now %x\n",*now_list_head);
-    printf("*next %x\n",*(unsigned int *)next);
-    for (int i = 0;i<= 8;i++){
-        printf("i:%x ",*(unsigned int *)(mem_heap_lo() + (i * WSIZE)));
-    }
-    printf("\n"); */
     while ((long) next != (long) mem_heap_lo()) {
         if (GETSIZE(HEADER(next)) >= GETSIZE(HEADER(bp))) break;
         prev = next;
@@ -130,10 +120,6 @@ static inline void insert_to_free_list(char *bp){
         SETNEXT(prev, (unsigned int)((long) bp));
         SETPREV(bp, (unsigned int)((long) prev));
     }
-    /* for (int i = 0;i<= 8;i++){
-        printf("i:%x ",*(unsigned int *)(mem_heap_lo() + (i * WSIZE)));
-    }
-    printf("\n"); */
 }
 
 /*
@@ -142,14 +128,10 @@ static inline void insert_to_free_list(char *bp){
 static inline void remove_from_free_list(char *bp){
     if (bp == NULL) return;
     unsigned int* now_list_head = get_free_list_head(GETSIZE(HEADER(bp)));
-    //printf("rm nowlist %pbp %p\n",now_list_head,bp);
-    //printf("rm size %x\n",GETSIZE(bp));
     char *prev = (char *)(long)GETPREV(bp); // not unsigned int ?
     char *next = (char *)(long)GETNEXT(bp);
     SETPREV(bp, 0); //We need to this before we find prev and next !!!!
     SETNEXT(bp, 0);
-    //printf("remove head %x\n",*(unsigned int *)(heap_listp + (6 * WSIZE)));
-    //printf("prev %p next %p\n",prev,next);
     if (prev == mem_heap_lo() && next == mem_heap_lo()){
         PUT(now_list_head, 0);
     } else if (prev != mem_heap_lo() && next == mem_heap_lo()){
@@ -161,11 +143,6 @@ static inline void remove_from_free_list(char *bp){
         SETNEXT(prev, (unsigned int)((long) next)); //!
         SETPREV(next, (unsigned int)((long) prev));
     }
-    /* for (int i = 0;i<= 8;i++){
-        printf("i:%x ",*(unsigned int *)(mem_heap_lo() + (i * WSIZE)));
-    }
-    printf("\n");
-    printf("now rm %x\n",*now_list_head); */
 }
 
 /*
@@ -174,8 +151,6 @@ static inline void remove_from_free_list(char *bp){
 static inline char* coalesce(char *bp){
     int prev_alloc = GETPREVALLOC(HEADER(bp));
     int next_alloc = GETALLOC(HEADER(NEXTBLOCK(bp)));
-    //printf("bp %p next %p\n",bp,NEXTBLOCK(bp));
-    //printf("prev %dnext %d\n",prev_alloc,next_alloc);
     if (prev_alloc && !next_alloc){ //I write wrong condition first
         remove_from_free_list(NEXTBLOCK(bp));
         int size = GETSIZE(HEADER(bp)) + GETSIZE(HEADER(NEXTBLOCK(bp)));
@@ -200,10 +175,7 @@ static inline char* coalesce(char *bp){
         char *nextbp = HEADER(NEXTBLOCK(bp));
         PUT(nextbp, PACK(GETSIZE(nextbp), GETALLOC(nextbp))); //need to change next block
     }
-    //printf("size %d\n",GETSIZE(bp));
-    //printf("hello\n");
     insert_to_free_list(bp);
-    //printf("size2 %d\n",GETSIZE(bp));
     return bp;
 }
 
@@ -214,9 +186,6 @@ static inline char* extend_heap(size_t extend_size){
     char *bp;
     if ((bp = mem_sbrk(extend_size)) == (void *)-1)
         return NULL;
-    //bp -= 4;
-    //printf("extend %p\n",bp);
-    //printf("size %d\n",extend_size);
     if (GETPREVALLOC(HEADER(bp))){
         PUT(HEADER(bp), PACK(extend_size, 2));
         PUT(FOOTER(bp), PACK(extend_size, 2));
@@ -224,10 +193,8 @@ static inline char* extend_heap(size_t extend_size){
         PUT(HEADER(bp), PACK(extend_size, 0));
         PUT(FOOTER(bp), PACK(extend_size, 0));
     }
-    //printf("size %d\n",GETSIZE(bp));
     SETPREV(bp, 0);
     SETNEXT(bp, 0);
-    //printf("%x\n",GETPREV(bp));
     PUT(HEADER(NEXTBLOCK(bp)), PACK(0, 1));
     return coalesce(bp);
 }
@@ -263,10 +230,7 @@ int mm_init(void){
  */
 static inline char* find_fit(size_t size){
     for (unsigned int* now_list_head = get_free_list_head(size); now_list_head != (unsigned int *)(heap_listp - 3 * WSIZE); now_list_head = now_list_head + 1){
-        //printf("%p\n",now_list_head);
-        //printf("%x\n",*now_list_head);
         for (char *bp = (char *)(*now_list_head + mem_heap_lo());bp != mem_heap_lo();bp = (char *)((long)GETNEXT(bp))){
-            //printf("%p\n",bp);
             if (GETSIZE(HEADER(bp)) >= size){
                 return bp;
             }
@@ -295,17 +259,12 @@ static inline void split_block(char *bp,size_t asize){
  */
 static inline void place(char *bp,size_t asize){
     size_t size = GETSIZE(HEADER(bp));
-    //printf("place bp%p size %x\n",bp,asize);
-    //if (bp == ((char *)mem_heap_lo() + 10160)) exit(0);
     remove_from_free_list(bp);
 
     PUT(HEADER(bp), PACK(size, 3));
     char *nextbp = HEADER(NEXTBLOCK(bp));
     PUT(nextbp, PACK(GETSIZE(nextbp), GETALLOC(nextbp) | 2));
     split_block(bp, asize);
-    /* printf("next %x\n",NEXTBLOCK(bp));
-    printf("place after bp%p size %x\n",bp,GETSIZE(bp)); */
-    //printf("place bp%p size %x\n",((char *)mem_heap_lo() + 10144),(*(unsigned int *)((char *)mem_heap_lo() + 10144) & ~0x7));
 }
 
 /*
@@ -313,18 +272,15 @@ static inline void place(char *bp,size_t asize){
  *      Always allocate a block whose size is a multiple of the alignment.
  */
 void *malloc(size_t size){
-    //printf("malloc\n");
     char *bp;
     int newsize = max(MINBLOCKSIZE, ALIGN(size + sizeof(int)));
     if ((bp = find_fit(newsize)) != NULL){
         place(bp, newsize);
-        //printf("ok\n");
         return bp;
     } else {
         if ((bp = extend_heap(newsize)) == NULL)
             return NULL;
         place(bp, newsize);
-        //printf("bp %p size %x\n",bp,GETSIZE(bp));
         return bp;
     }
 }
@@ -333,17 +289,9 @@ void *malloc(size_t size){
  * free - We just change the alloc bit from 0 to 1 and do coalesce
  */
 void free(void *ptr){
-    /* printf("place bp%p size %x\n",((char *)mem_heap_lo() + 10144),(*(unsigned int *)((char *)mem_heap_lo() + 10144) & ~0x7));
-    for (int i = 0;i<= 8;i++){
-        printf("i:%x ",*(unsigned int *)(mem_heap_lo() + (i * WSIZE)));
-    }
-    printf("\n"); */
     if (ptr == NULL) return;
     if (!GETALLOC(HEADER(ptr))) return;
-    //printf("free\n");
     size_t size = GETSIZE(HEADER(ptr));
-    /* printf("ptr %p size %lx\n",ptr,size);
-    printf("prev alloc %x\n",GETPREVALLOC(HEADER(ptr))); */
     if (GETPREVALLOC(HEADER(ptr))){
         PUT(HEADER(ptr), PACK(size, 2));
         PUT(FOOTER(ptr), PACK(size, 2));
@@ -351,14 +299,7 @@ void free(void *ptr){
         PUT(HEADER(ptr), PACK(size, 0));
         PUT(FOOTER(ptr), PACK(size, 0));
     }
-    //printf("free\n");
-    /* for (int i = 0;i<= 8;i++){
-        printf("i:%x ",*(unsigned int *)(mem_heap_lo() + (i * WSIZE)));
-    } */
-    //printf("\n");
-    //printf("place bp%p size %x\n",((char *)mem_heap_lo() + 10144),(*(unsigned int *)((char *)mem_heap_lo() + 10144) & ~0x7));
     coalesce(ptr);
-    //printf("place bp%p size %x\n",((char *)mem_heap_lo() + 10144),(*(unsigned int *)((char *)mem_heap_lo() + 10144) & ~0x7));
 }
 
 /*
