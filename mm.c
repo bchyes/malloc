@@ -149,31 +149,32 @@ static inline void remove_from_free_list(char *bp){
  * coalesce - Called when we try to merge the prev block and next block.
  */
 static inline char* coalesce(char *bp){
+    char *next = NEXTBLOCK(bp);
     int prev_alloc = GETPREVALLOC(HEADER(bp));
-    int next_alloc = GETALLOC(HEADER(NEXTBLOCK(bp)));
+    int next_alloc = GETALLOC(HEADER(next));
     if (prev_alloc && !next_alloc){ //I write wrong condition first
-        remove_from_free_list(NEXTBLOCK(bp));
-        int size = GETSIZE(HEADER(bp)) + GETSIZE(HEADER(NEXTBLOCK(bp)));
-        PUT(FOOTER(NEXTBLOCK(bp)), PACK(size, 2)); //We must modify FOOTER first!!
+        remove_from_free_list(next);
+        int size = GETSIZE(HEADER(bp)) + GETSIZE(HEADER(next));
+        PUT(FOOTER(next), PACK(size, 2)); //We must modify FOOTER first!!
         PUT(HEADER(bp), PACK(size, 2));
     } else if (!prev_alloc && next_alloc){
-        remove_from_free_list(PREVBLOCK(bp));
-        int size = GETSIZE(HEADER(bp)) + GETSIZE(HEADER(PREVBLOCK(bp)));
-        PUT(HEADER(PREVBLOCK(bp)), PACK(size, 2));
+        char *prev = PREVBLOCK(bp);
+        remove_from_free_list(prev);
+        int size = GETSIZE(HEADER(bp)) + GETSIZE(HEADER(prev));
+        PUT(HEADER(prev), PACK(size, 2));
         PUT(FOOTER(bp), PACK(size, 2));
-        char *nextbp = HEADER(NEXTBLOCK(bp));
-        PUT(nextbp, PACK(GETSIZE(nextbp), GETALLOC(nextbp)));
-        bp = PREVBLOCK(bp); //We must return the coalesce block!!
+        PUT(next, PACK(GETSIZE(next), GETALLOC(next)));
+        bp = prev; //We must return the coalesce block!!
     } else if (!prev_alloc && !next_alloc){
-        remove_from_free_list(PREVBLOCK(bp));
-        remove_from_free_list(NEXTBLOCK(bp));
-        int size = GETSIZE(HEADER(bp)) + GETSIZE(HEADER(NEXTBLOCK(bp))) + GETSIZE(HEADER(PREVBLOCK(bp)));
-        PUT(FOOTER(NEXTBLOCK(bp)), PACK(size, 2));
-        PUT(HEADER(PREVBLOCK(bp)), PACK(size, 2));
-        bp = PREVBLOCK(bp);
+        char *prev = PREVBLOCK(bp);
+        remove_from_free_list(prev);
+        remove_from_free_list(next);
+        int size = GETSIZE(HEADER(bp)) + GETSIZE(HEADER(next)) + GETSIZE(HEADER(prev));
+        PUT(FOOTER(next), PACK(size, 2));
+        PUT(HEADER(prev), PACK(size, 2));
+        bp = prev;
     } else {
-        char *nextbp = HEADER(NEXTBLOCK(bp));
-        PUT(nextbp, PACK(GETSIZE(nextbp), GETALLOC(nextbp))); //need to change next block
+        PUT(next, PACK(GETSIZE(next), GETALLOC(next))); //need to change next block
     }
     insert_to_free_list(bp);
     return bp;
@@ -245,12 +246,12 @@ static inline char* find_fit(size_t size){
 static inline void split_block(char *bp,size_t asize){
     size_t size = GETSIZE(HEADER(bp));
     if (size - asize >= MINBLOCKSIZE){
+        char *nextbp = NEXTBLOCK(bp);
         PUT(HEADER(bp), PACK(asize, 3));
-        PUT(HEADER(NEXTBLOCK(bp)), PACK(size - asize, 2));
-        PUT(FOOTER(NEXTBLOCK(bp)), PACK(size - asize, 2));
-        char *nextbp = HEADER(NEXTBLOCK(bp));
+        PUT(HEADER(nextbp), PACK(size - asize, 2));
+        PUT(FOOTER(nextbp), PACK(size - asize, 2));
         PUT(nextbp, PACK(GETSIZE(nextbp), GETALLOC(nextbp)));
-        insert_to_free_list(NEXTBLOCK(bp));
+        insert_to_free_list(nextbp);
     }
 }
 

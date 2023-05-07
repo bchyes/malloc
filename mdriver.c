@@ -956,7 +956,7 @@ static int eval_mm_valid(trace_t *trace, range_t **ranges)
 				r = r->next;
 			}
 		}
-		
+
 		switch (trace->ops[i].type) {
 			
 			case ALLOC: /* mm_malloc */
